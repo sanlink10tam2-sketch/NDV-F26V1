@@ -15,8 +15,11 @@ const isValidUrl = (url: string) => {
   }
 };
 
-if (!SUPABASE_URL || !SUPABASE_KEY || !isValidUrl(SUPABASE_URL)) {
-  console.error("CRITICAL ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing or invalid.");
+const isPlaceholder = (val: string) => 
+  !val || val.includes("your-project-id") || val.includes("your-service-role-key");
+
+if (!SUPABASE_URL || !SUPABASE_KEY || !isValidUrl(SUPABASE_URL) || isPlaceholder(SUPABASE_URL) || isPlaceholder(SUPABASE_KEY)) {
+  console.error("CRITICAL ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing, invalid, or using placeholder values.");
 }
 
 const supabase = (SUPABASE_URL && SUPABASE_KEY && isValidUrl(SUPABASE_URL)) 
@@ -30,10 +33,22 @@ const router = express.Router();
 router.use(cors());
 router.use(express.json({ limit: '50mb' }));
 
+// Helper to safely stringify data that might contain BigInt
+const safeJsonStringify = (data: any) => {
+  return JSON.stringify(data, (key, value) =>
+    typeof value === 'bigint' ? value.toString() : value
+  );
+};
+
 // Helper to estimate JSON size in MB
 const getStorageUsage = (data: any) => {
-  const str = JSON.stringify(data);
-  return (Buffer.byteLength(str, 'utf8') / (1024 * 1024));
+  try {
+    const str = safeJsonStringify(data);
+    return (Buffer.byteLength(str, 'utf8') / (1024 * 1024));
+  } catch (e) {
+    console.error("Error calculating storage usage:", e);
+    return 0;
+  }
 };
 
 let isCleaningUp = false;
@@ -108,9 +123,11 @@ router.get("/supabase-status", async (req, res) => {
       });
     }
     
-    const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+    // Use a more standard count query
+    const { error } = await supabase.from('users').select('*', { count: 'exact', head: true });
     
     if (error) {
+      console.error("Supabase connection error details:", error);
       return res.json({ 
         connected: false, 
         error: `Lỗi kết nối Supabase: ${error.message} (${error.code})` 
@@ -119,6 +136,7 @@ router.get("/supabase-status", async (req, res) => {
     
     res.json({ connected: true, message: "Kết nối Supabase ổn định" });
   } catch (e: any) {
+    console.error("Critical error in /supabase-status:", e);
     res.json({ connected: false, error: `Lỗi hệ thống: ${e.message}` });
   }
 });
@@ -249,7 +267,12 @@ router.post("/users", async (req, res) => {
     const { error } = await supabase.from('users').upsert(incomingUsers, { onConflict: 'id' });
     if (error) {
       console.error("Lỗi upsert users:", error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ 
+        error: "Lỗi cơ sở dữ liệu", 
+        message: error.message, 
+        code: error.code,
+        hint: error.hint || "Hãy đảm bảo bạn đã chạy SQL schema trong Supabase SQL Editor."
+      });
     }
     
     res.json({ success: true });
@@ -271,7 +294,12 @@ router.post("/loans", async (req, res) => {
     const { error } = await supabase.from('loans').upsert(incomingLoans, { onConflict: 'id' });
     if (error) {
       console.error("Lỗi upsert loans:", error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ 
+        error: "Lỗi cơ sở dữ liệu", 
+        message: error.message, 
+        code: error.code,
+        hint: error.hint || "Hãy đảm bảo bạn đã chạy SQL schema trong Supabase SQL Editor."
+      });
     }
     
     res.json({ success: true });
@@ -293,7 +321,12 @@ router.post("/notifications", async (req, res) => {
     const { error } = await supabase.from('notifications').upsert(incomingNotifs, { onConflict: 'id' });
     if (error) {
       console.error("Lỗi upsert notifications:", error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ 
+        error: "Lỗi cơ sở dữ liệu", 
+        message: error.message, 
+        code: error.code,
+        hint: error.hint || "Hãy đảm bảo bạn đã chạy SQL schema trong Supabase SQL Editor."
+      });
     }
     
     res.json({ success: true });

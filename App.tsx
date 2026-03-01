@@ -122,7 +122,15 @@ const App: React.FC = () => {
         clearTimeout(timeout);
 
         if (!response.ok) {
-          throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+          let errorMessage = `Server returned ${response.status}: ${response.statusText}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.message) errorMessage = errorData.message;
+            else if (errorData.error) errorMessage = errorData.error;
+          } catch (e) {
+            // Not a JSON error response
+          }
+          throw new Error(errorMessage);
         }
         
         const contentType = response.headers.get("content-type");
