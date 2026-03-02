@@ -22,9 +22,19 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !isValidUrl(SUPABASE_URL) || isPlaceholder
   console.error("CRITICAL ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing, invalid, or using placeholder values.");
 }
 
-const supabase = (SUPABASE_URL && SUPABASE_KEY && isValidUrl(SUPABASE_URL)) 
-  ? createClient(SUPABASE_URL, SUPABASE_KEY)
-  : null;
+const supabase = (() => {
+  try {
+    if (SUPABASE_URL && SUPABASE_KEY && isValidUrl(SUPABASE_URL)) {
+      console.log("Initializing Supabase client with URL:", SUPABASE_URL);
+      return createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    console.warn("Supabase credentials missing or invalid URL.");
+    return null;
+  } catch (e) {
+    console.error("Failed to initialize Supabase client:", e);
+    return null;
+  }
+})();
 
 const STORAGE_LIMIT_MB = 45; // Virtual limit for demo purposes
 

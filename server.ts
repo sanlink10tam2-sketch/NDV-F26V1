@@ -4,6 +4,11 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
+import * as dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config();
+
 import apiApp from "./api/index";
 
 async function startServer() {
