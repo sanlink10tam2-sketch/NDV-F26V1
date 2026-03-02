@@ -10,9 +10,10 @@ import Profile from './components/Profile';
 import AdminDashboard from './components/AdminDashboard';
 import AdminUserManagement from './components/AdminUserManagement';
 import AdminBudget from './components/AdminBudget';
-import { User as UserIcon, Home, Briefcase, Medal, LayoutGrid, Users, Wallet, AlertTriangle, X } from 'lucide-react';
+import { User as UserIcon, Home, Briefcase, Medal, LayoutGrid, Users, Wallet, AlertTriangle, X, Database } from 'lucide-react';
 import { compressImage } from './utils';
 import BankUpdateWarning from './components/BankUpdateWarning';
+import DatabaseErrorModal from './components/DatabaseErrorModal';
 
 interface ErrorBoundaryProps {
   children?: React.ReactNode;
@@ -71,6 +72,7 @@ const App: React.FC = () => {
   const [storageFull, setStorageFull] = useState(false);
   const [storageUsage, setStorageUsage] = useState('0');
   const [isGlobalProcessing, setIsGlobalProcessing] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
   const isProcessingRef = React.useRef(false);
 
   const hasBankInfo = (u: User | null) => {
@@ -130,6 +132,12 @@ const App: React.FC = () => {
           } catch (e) {
             // Not a JSON error response
           }
+          
+          // Detect database errors
+          if (response.status === 500 || errorMessage.toLowerCase().includes('database') || errorMessage.toLowerCase().includes('supabase')) {
+            setDbError(errorMessage);
+          }
+          
           throw new Error(errorMessage);
         }
         
@@ -1209,6 +1217,16 @@ const App: React.FC = () => {
         )}
 
         <div className="flex-1 overflow-y-auto scroll-smooth pb-28">{renderView()}</div>
+        {dbError && (
+          <DatabaseErrorModal 
+            error={dbError} 
+            onRetry={() => {
+              setDbError(null);
+              window.location.reload();
+            }} 
+            onClose={() => setDbError(null)} 
+          />
+        )}
         {showBankWarning && currentView !== AppView.PROFILE && (
           <BankUpdateWarning onUpdate={() => {
             setShowBankWarning(false);

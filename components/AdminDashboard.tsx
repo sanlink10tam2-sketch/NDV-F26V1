@@ -19,6 +19,8 @@ import {
   BarChart3
 } from 'lucide-react';
 
+import DatabaseErrorModal from './DatabaseErrorModal';
+
 interface AdminDashboardProps {
   user: User | null;
   loans: LoanRecord[];
@@ -47,6 +49,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showLoanResetConfirm, setShowLoanResetConfirm] = useState(false);
   const [dbStatus, setDbStatus] = useState<{ connected: boolean; message?: string; error?: string } | null>(null);
+  const [showDbErrorModal, setShowDbErrorModal] = useState(false);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [isBudgetExpanded, setIsBudgetExpanded] = useState(false);
   const [isLoansExpanded, setIsLoansExpanded] = useState(false);
@@ -68,9 +71,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       const data = await response.json();
       setDbStatus(data);
+      if (!data.connected) {
+        setShowDbErrorModal(true);
+      }
     } catch (e: any) {
       console.error("Database status check error:", e);
-      setDbStatus({ connected: false, error: `Lỗi kết nối API: ${e.message || 'Lỗi không xác định'}` });
+      const errorMsg = `Lỗi kết nối API: ${e.message || 'Lỗi không xác định'}`;
+      setDbStatus({ connected: false, error: errorMsg });
+      setShowDbErrorModal(true);
     } finally {
       setIsCheckingDb(false);
     }
@@ -450,6 +458,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {showDbErrorModal && dbStatus?.error && (
+        <DatabaseErrorModal 
+          error={dbStatus.error} 
+          onRetry={() => {
+            setShowDbErrorModal(false);
+            checkDbStatus();
+          }} 
+          onClose={() => setShowDbErrorModal(false)} 
+        />
       )}
     </div>
   );
